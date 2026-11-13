@@ -74,7 +74,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   letter-spacing: -0.01em;
   margin-bottom: 24px;
 }
-.h2 em, .hero__title em { font-style: italic; color: var(--navy); }
+.h2 em { font-style: italic; color: var(--navy); }
 .h3 { font-family: var(--serif); font-size: clamp(32px, 3.4vw, 44px); line-height: 1.05; margin-bottom: 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
@@ -114,7 +114,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   color: var(--white);
   transition: background 0.4s var(--ease), color 0.4s, box-shadow 0.4s, transform 0.4s var(--ease);
 }
-.nav__inner { display: flex; align-items: center; gap: 32px; height: 84px; transition: height 0.4s var(--ease); }
+.nav__inner { display: flex; align-items: center; gap: 32px; height: 76px; }
 .nav[data-state="scrolled"] {
   background: rgba(251, 250, 247, 0.92);
   backdrop-filter: saturate(1.4) blur(14px);
@@ -122,15 +122,23 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   color: var(--ink);
   box-shadow: 0 1px 0 var(--line);
 }
-.nav[data-state="scrolled"] .nav__inner { height: 68px; }
 .nav[data-state="scrolled"] .nav__cta { background: var(--navy); color: var(--white); }
 .nav[data-state="scrolled"] .nav__cta:hover { background: var(--ink); }
 
-.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
-.brand__mark { width: 30px; height: 30px; flex: none; }
-.brand__text { display: flex; flex-direction: column; line-height: 1; }
-.brand__name { font-weight: 700; font-size: 19px; letter-spacing: 0.22em; }
-.brand__sub { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; margin-top: 5px; }
+.brand { position: relative; display: block; flex: none; text-decoration: none; --logo-h: 34px; }
+.brand__img { display: block; height: var(--logo-h); width: auto; transition: opacity 0.35s var(--ease); }
+.brand__img--light { position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; }
+/* Over the hero (and in the open mobile menu) the white version shows; on the light bar, the dark one */
+.nav[data-state="top"] .brand__img--dark, body.menu-open .brand__img--dark { opacity: 0; }
+.nav[data-state="top"] .brand__img--light, body.menu-open .brand__img--light { opacity: 1; }
+/* Logo flight: the navbar logo is transformed by JS; the hero placeholder only reserves the spot */
+.logo-flight .brand { transform-origin: center; will-change: transform; backface-visibility: hidden; }
+.logo-flight .hero__brand { visibility: hidden; }
+.brand.is-snapping { transition: transform 0.45s var(--ease); }
+.js .brand { opacity: 0; }
+.js.flight-ready .brand { opacity: 1; transition: opacity 0.9s var(--ease) 0.1s; }
+.js.flight-ready .brand.is-snapping { transition: opacity 0.9s var(--ease), transform 0.45s var(--ease); }
+@media (max-width: 960px) { .brand { --logo-h: 30px; } }
 
 .nav__links { display: flex; gap: 30px; margin-left: auto; }
 .nav__links a {
@@ -192,61 +200,42 @@ body.menu-open .nav { background: var(--ink); color: var(--white); box-shadow: n
 .hero__shade {
   position: absolute; inset: 0;
   background:
-    linear-gradient(180deg, rgba(10, 13, 18, 0.55) 0%, rgba(10, 13, 18, 0) 26%),
-    linear-gradient(90deg, rgba(10, 13, 18, 0.72) 0%, rgba(10, 13, 18, 0.35) 48%, rgba(10, 13, 18, 0.05) 100%),
-    linear-gradient(0deg, rgba(10, 13, 18, 0.6) 0%, rgba(10, 13, 18, 0) 40%);
+    linear-gradient(180deg, rgba(10, 13, 18, 0.45) 0%, rgba(10, 13, 18, 0) 22%),
+    radial-gradient(70% 55% at 50% 50%, rgba(10, 13, 18, 0.42) 0%, rgba(10, 13, 18, 0.12) 70%, rgba(10, 13, 18, 0) 100%),
+    linear-gradient(0deg, rgba(10, 13, 18, 0.45) 0%, rgba(10, 13, 18, 0) 30%);
 }
-.hero__content { position: relative; padding-top: 130px; padding-bottom: 40px; }
-.hero__title {
-  font-family: var(--serif); font-weight: 400;
-  font-size: clamp(46px, min(7vw, 11vh), 112px); line-height: 0.96; letter-spacing: -0.015em;
-  margin-bottom: 28px;
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.hero__title em { color: #c9d6ee; }
-.hero__lead { font-size: clamp(16px, 1.4vw, 19px); max-width: 540px; color: rgba(255, 255, 255, 0.86); margin-bottom: 36px; }
-.hero__ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 
-.hero__foot {
-  position: relative; display: flex; justify-content: space-between; align-items: center; gap: 24px;
-  padding-top: 22px; padding-bottom: 28px;
+/* Centred logo placeholder — the navbar logo is drawn on top of it (see "Logo flight" in main.js) */
+.hero__center { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 var(--gutter); pointer-events: none; }
+.hero__brand {
+  display: block; width: min(560px, 74vw); height: auto;
+  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.45));
 }
-.hero__foot::before {
-  content: ""; position: absolute; top: 0; left: var(--gutter); right: var(--gutter); height: 1px; background: rgba(255, 255, 255, 0.2);
-}
-.hero__claims { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.82); }
-.hero__claims li { display: flex; align-items: center; gap: 10px; }
-.hero__claims li::before { content: ""; width: 5px; height: 5px; background: #c9d6ee; transform: rotate(45deg); }
-.hero__scene { display: grid; grid-template-columns: auto auto; column-gap: 14px; align-items: baseline; justify-items: end; text-align: right; }
-.hero__scene-n, .hero__scene-t { visibility: hidden; }
-.hero.is-playing .hero__scene-n, .hero.is-playing .hero__scene-t { visibility: visible; }
-.hero__scene-n { font-size: 11px; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.55); font-variant-numeric: tabular-nums; }
-.hero__scene-t {
-  font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--white);
-  opacity: 0; transform: translateY(6px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
-}
-.hero__scene-t.is-in { opacity: 1; transform: none; }
-.hero__credit { grid-column: 1 / -1; font-size: 11px; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.5); white-space: nowrap; margin-top: 4px; }
 
-.hero__pause {
-  position: absolute; right: var(--gutter); top: 104px; z-index: 2;
-  width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(0, 0, 0, 0.2); color: var(--white); cursor: pointer; display: grid; place-items: center;
+/* Scroll cue: a thin line with a travelling highlight */
+.hero__cue {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  width: 44px; height: 64px; display: grid; justify-items: center; align-items: end;
 }
-.hero__pause svg { width: 14px; height: 14px; fill: currentColor; }
-.hero__pause .i-play { display: none; }
-.hero__pause[data-paused="true"] .i-play { display: block; }
-.hero__pause[data-paused="true"] .i-pause { display: none; }
-
+.hero__cue span { position: relative; width: 1px; height: 48px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.hero__cue span::after {
+  content: ""; position: absolute; left: 0; top: -40%; width: 1px; height: 40%; background: var(--white);
+  animation: cue 2.2s var(--ease) infinite;
+}
+@keyframes cue { to { top: 100%; } }
+.hero__credit {
+  position: absolute; right: var(--gutter); bottom: 22px;
+  font-size: 10.5px; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.45); white-space: nowrap;
+}
 @media (max-width: 700px) {
-  .hero__content { padding-bottom: 32px; }
-  .hero__ctas .btn { flex: 1 1 100%; }
-  .hero__foot { flex-direction: column; align-items: flex-start; gap: 10px; padding-bottom: 96px; }
-  .hero__claims { gap: 6px 18px; font-size: 11px; }
-  .hero__scene { justify-items: start; text-align: left; }
-  .hero__pause { top: auto; bottom: 104px; }
-  .hero__scene-t { font-size: 17px; }
-  .hero__shade { background: linear-gradient(0deg, rgba(10,13,18,0.85) 0%, rgba(10,13,18,0.35) 55%, rgba(10,13,18,0.5) 100%); }
+  .hero__brand { width: 80vw; }
+  .hero__credit { right: 16px; bottom: 16px; }
 }
+@media (prefers-reduced-motion: reduce) { .hero__cue span::after { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .hero__video { animation: none; transform: none; } }
 
 /* ==========================================================================
@@ -562,7 +551,8 @@ body.menu-open .nav { background: var(--ink); color: var(--white); box-shadow: n
 /* ---------- Footer ---------- */
 .footer { background: var(--ink); color: rgba(255,255,255,0.75); padding: 72px 0 40px; }
 .footer__grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; }
-.brand--footer { color: var(--white); }
+.brand--footer { display: inline-block; }
+.brand--footer img { height: 40px; width: auto; display: block; }
 .footer__tag { font-family: var(--serif); font-size: 26px; line-height: 1.2; color: var(--white); max-width: 22ch; margin-top: 28px; font-style: italic; }
 .footer nav { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .footer nav a { text-decoration: none; }
@@ -597,9 +587,6 @@ body.menu-open .nav { background: var(--ink); color: var(--white); box-shadow: n
 /* ---------- Scroll reveal ---------- */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
 .reveal.is-in { opacity: 1; transform: none; }
-.hero .reveal:nth-child(2) { transition-delay: 0.08s; }
-.hero .reveal:nth-child(3) { transition-delay: 0.16s; }
-.hero .reveal:nth-child(4) { transition-delay: 0.24s; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
   .product.is-entering, .sheet[open] { animation: none; }

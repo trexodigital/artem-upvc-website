@@ -6,6 +6,8 @@
   <title>ARTEM uPVC Windows and Doors — Lubao, Pampanga</title>
   <meta name="description" content="uPVC sliding, casement, awning and fixed windows and doors in white, black and wood finish — plus shower enclosures, glass railings and more. Based in Lubao, Pampanga. Free quotation." />
   <meta name="theme-color" content="#12161c" />
+  <!-- Lets CSS hide the navbar logo until JS has placed it at the hero centre (prevents a first-frame jump) -->
+  <script>document.documentElement.classList.add("js");</script>
   <!-- SAMPLE / PREVIEW for client approval: keep search engines from indexing it.
        Remove this line (and add <link rel="canonical">) when the real site goes live. -->
   <meta name="robots" content="noindex, nofollow" />
@@ -56,15 +58,11 @@
   <!-- ============================== HEADER ============================== -->
   <header class="nav" id="nav" data-state="top">
     <div class="nav__inner container">
-      <a href="#top" class="brand" aria-label="ARTEM uPVC Windows and Doors — home">
-        <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
-          <rect x="2" y="2" width="28" height="28" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
-          <path d="M16 2v28M2 16h28" stroke="currentColor" stroke-width="1.6"/>
-        </svg>
-        <span class="brand__text">
-          <span class="brand__name">ARTEM</span>
-          <span class="brand__sub">uPVC Windows &amp; Doors</span>
-        </span>
+      <!-- The ONLY visible logo. At the top of the page JS draws it at the size/position of the
+           invisible .hero__brand placeholder (hero centre); scrolling flies it into this slot. -->
+      <a href="#top" class="brand" id="brand" aria-label="ARTEM uPVC Windows and Doors — home">
+        <img class="brand__img brand__img--dark" src="assets/logo/artem-logo-dark.svg" width="520" height="120" alt="ARTEM uPVC Windows and Doors" decoding="async" />
+        <img class="brand__img brand__img--light" src="assets/logo/artem-logo-light.svg" width="520" height="120" alt="" aria-hidden="true" decoding="async" fetchpriority="high" />
       </a>
 
       <nav class="nav__links" aria-label="Main">
@@ -105,15 +103,13 @@
     <section class="hero" id="top" aria-label="Introduction">
       <div class="hero__media">
         <!--
-          ILLUSTRATIVE FOOTAGE — edited reel of free-license Pexels clips
-          (IDs 39576524, 37634863, 5835694, 7578541, 39105099, 40807457;
-          mobile cut also 40074718, 34237018, 40807351). NOT ARTEM projects.
-          hero-desktop.mp4 = 1920×1080 (16:9), hero-mobile.mp4 = 720×1280 (9:16).
-          To use ARTEM footage, replace these two files (keep the names).
-          The source is attached by JS after page load so it never slows the
-          first paint; the poster image shows immediately.
+          ILLUSTRATIVE FOOTAGE — two-shot reel edited from free-license Pexels clips
+          39576524 (glass-front house with palms) and 37634863 (floor-to-ceiling black frames).
+          NOT ARTEM projects. The reel's last crossfade lands on its first frame, so it loops seamlessly.
+          hero-desktop.mp4 = 1920×1080 (16:9), hero-mobile.mp4 = 720×1280 (9:16, picked by JS on portrait screens).
+          To use ARTEM footage, replace these files (keep the names).
         -->
-        <video class="hero__video" id="heroVideo" muted loop playsinline preload="none"
+        <video class="hero__video" id="heroVideo" autoplay muted loop playsinline preload="metadata"
           poster="assets/video/hero-desktop-poster.jpg"
           data-src="assets/video/hero-desktop.mp4"
           data-src-mobile="assets/video/hero-mobile.mp4"
@@ -122,36 +118,16 @@
         <div class="hero__shade"></div>
       </div>
 
-      <div class="hero__content container">
-        <p class="eyebrow eyebrow--light reveal">uPVC Windows &amp; Doors for Homes · Pampanga</p>
-        <h1 class="hero__title reveal">
-          Let the light in.<br />
-          <em>Keep the weather out.</em>
-        </h1>
-        <p class="hero__lead reveal">
-          ARTEM supplies and installs uPVC sliding, casement, awning and fixed windows and glass sliding doors
-          for Filipino homes — in white, black or wood finish, without the rust, anay, warping or yellowing.
-        </p>
-        <div class="hero__ctas reveal">
-          <a href="#products" class="btn btn--light">Explore Our Products</a>
-          <a href="#quote" class="btn btn--ghost">Request a Free Quotation</a>
-        </div>
+      <h1 class="sr-only">ARTEM uPVC Windows and Doors — Lubao, Pampanga</h1>
+
+      <!-- Layout placeholder for the logo's starting position. It stays invisible while the
+           navbar logo is drawn here; it is only shown itself if the flight is disabled (reduced motion). -->
+      <div class="hero__center">
+        <img class="hero__brand" id="heroBrand" src="assets/logo/artem-logo-light.svg" width="520" height="120" alt="" aria-hidden="true" decoding="async" />
       </div>
 
-      <div class="hero__foot container">
-        <ul class="hero__claims" aria-label="Product promises">
-          <li>No rust</li><li>No termites</li><li>No warping</li><li>No yellowing</li><li>10-yr profile warranty</li>
-        </ul>
-        <div class="hero__scene" aria-hidden="true">
-          <span class="hero__scene-n" id="sceneN">01</span>
-          <span class="hero__scene-t" id="sceneT">Modern glass-front home</span>
-          <span class="hero__credit">Illustrative footage · not ARTEM projects</span>
-        </div>
-      </div>
-
-      <button class="hero__pause" id="heroPause" aria-label="Pause background video" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M7 5h3v14H7zM14 5h3v14h-3z"/><path class="i-play" d="M8 5l11 7-11 7z"/></svg>
-      </button>
+      <a href="#products" class="hero__cue" aria-label="Scroll to products"><span></span></a>
+      <span class="hero__credit">Illustrative footage</span>
     </section>
 
     <!-- ============================== PROMISES ============================== -->
@@ -513,12 +489,8 @@
   <footer class="footer">
     <div class="container footer__grid">
       <div>
-        <a href="#top" class="brand brand--footer" aria-label="Back to top">
-          <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
-            <rect x="2" y="2" width="28" height="28" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
-            <path d="M16 2v28M2 16h28" stroke="currentColor" stroke-width="1.6"/>
-          </svg>
-          <span class="brand__text"><span class="brand__name">ARTEM</span><span class="brand__sub">uPVC Windows &amp; Doors</span></span>
+        <a href="#top" class="brand--footer" aria-label="Back to top">
+          <img src="assets/logo/artem-logo-light.svg" width="520" height="120" alt="ARTEM uPVC Windows and Doors" loading="lazy" decoding="async" />
         </a>
         <p class="footer__tag">It takes hands to build a house, but only hearts can build a home.</p>
       </div>

@@ -19,21 +19,75 @@
   const srcset = (src) => (isFile(src) ? "" : `${src}-800.jpg 800w, ${src}-1600.jpg 1600w`);
 
   /* ---------------------------------------------------------------- NAV */
+  const root = document.documentElement;
   const nav = $("#nav");
   const hero = $(".hero");
   const actionBar = $("#actionBar");
   const quoteSec = $("#quote");
+  const menuIsOpen = () => document.body.classList.contains("menu-open");
 
+  /* ======================================================== LOGO FLIGHT
+     Same approach as the VaelorCoat site: there is ONE visible logo — the
+     navbar's. At the top of the page it is drawn (via transform) at the size
+     and position of the invisible .hero__brand placeholder in the centre of
+     the hero; as the visitor scrolls through the first ~45% of the hero it
+     travels up and shrinks into its navbar slot. Everything is a pure
+     function of scrollY, so scrolling back reverses it exactly — no fades
+     between two logos, no jumps. Reduced motion: no flight; the hero logo
+     is simply shown in place and the navbar logo stays in the bar.        */
+  const brand = $("#brand");
+  const heroBrand = $("#heroBrand");
+  const flight = (function () {
+    if (!brand || !heroBrand || reduceMotion) { root.classList.add("flight-ready"); return { measure() {}, update() { return undefined; } }; }
+    root.classList.add("logo-flight");
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    const easeIO = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+    let nx = 0, ny = 0, nw = 1, bx = 0, by = 0, bw = 1, D = 300, lastT = "", lastH = 0;
+    const measure = () => {
+      brand.style.transform = "none";
+      const r = brand.getBoundingClientRect();           // navbar slot (fixed → viewport coords)
+      nx = r.left + r.width / 2; ny = r.top + r.height / 2; nw = r.width || 1;
+      const b = heroBrand.getBoundingClientRect();       // hero placeholder (→ page coords)
+      bx = b.left + b.width / 2; by = b.top + b.height / 2 + scrollY; bw = b.width || 1;
+      D = Math.max(220, hero.offsetHeight * 0.45);       // scroll distance of the whole flight
+      lastT = "none"; lastH = hero.offsetHeight;
+    };
+    const update = () => {
+      if (hero.offsetHeight !== lastH) measure();
+      const p = clamp01(scrollY / D), e = easeIO(p);
+      let t = "";
+      if (e < 1 && !menuIsOpen()) {
+        const s0 = bw / nw, sc = s0 + (1 - s0) * e;
+        const cx = bx + (nx - bx) * e;
+        const cy = (by - scrollY) + (ny - (by - scrollY)) * e;   // current centre, viewport coords
+        t = `translate3d(${(cx - nx).toFixed(2)}px,${(cy - ny).toFixed(2)}px,0) scale(${sc.toFixed(4)})`;
+      }
+      if (t !== lastT) { brand.style.transform = t; lastT = t; }
+      return p;
+    };
+    const ready = () => { measure(); update(); root.classList.add("flight-ready"); };
+    [brand.querySelector("img"), heroBrand].forEach((im) => { if (im && !im.complete) im.addEventListener("load", () => { measure(); update(); }, { once: true }); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); update(); });
+    requestAnimationFrame(ready);
+    return { measure, update };
+  })();
+
+  let ticking = false;
   const onScroll = () => {
     const y = window.scrollY;
-    nav.dataset.state = y > 40 ? "scrolled" : "top";
+    const p = flight.update();
+    // The light bar appears once the logo has mostly arrived, so it never cuts across the flying logo.
+    nav.dataset.state = (p === undefined ? y > 40 : p > 0.72) ? "scrolled" : "top";
     // Mobile action bar: show after the hero, hide while the quote form is on screen
     const pastHero = y > hero.offsetHeight * 0.6;
     const qr = quoteSec.getBoundingClientRect();
     const inQuote = qr.top < window.innerHeight * 0.7 && qr.bottom > 0;
     actionBar.classList.toggle("is-visible", pastHero && !inQuote);
+    ticking = false;
   };
-  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  window.addEventListener("resize", () => { flight.measure(); onScroll(); });
+  flight.measure();
   onScroll();
 
   // Highlight current section in the nav
@@ -56,11 +110,18 @@
   const toggle = $("#navToggle");
   const menu = $("#mobileMenu");
 
+  // When the menu opens over the hero, the logo glides into the bar (and back out when it closes).
+  const snapLogo = () => {
+    brand.classList.add("is-snapping");
+    onScroll();
+    setTimeout(() => brand.classList.remove("is-snapping"), 460);
+  };
   const setMenu = (open) => {
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     document.body.classList.toggle("menu-open", open);
     document.body.style.overflow = open ? "hidden" : "";
+    snapLogo();
     if (open) {
       menu.hidden = false;
       requestAnimationFrame(() => menu.classList.add("is-open"));
@@ -78,59 +139,36 @@
   window.matchMedia("(min-width: 961px)").addEventListener("change", (m) => m.matches && setMenu(false));
 
   /* --------------------------------------------------------- HERO VIDEO */
-  // The poster image paints first. The video is attached only after the page
-  // has loaded, and skipped entirely for reduced-motion or data-saver users.
+  // Autoplays muted, loops, plays inline — no visible controls. Phones (portrait
+  // screens) get the vertical 9:16 cut. Skipped only for reduced-motion or
+  // data-saver users, who see the poster image instead.
   const video = $("#heroVideo");
-  const pauseBtn = $("#heroPause");
   const saveData = navigator.connection && navigator.connection.saveData;
-
-  // Portrait screens (phones) get the vertical 9:16 cut; everything else the 16:9 cut.
   const portrait = window.matchMedia("(max-aspect-ratio: 4/5)").matches;
   if (portrait && video.dataset.posterMobile) video.poster = video.dataset.posterMobile;
 
-  // Scene captions, timed to the edited reels (start second → label).
-  const SCENES = portrait
-    ? [[0, "Modern glass-front home"], [3.5, "Sliding glass doors"], [7, "Sliding door to the deck"], [10.5, "Casement window"], [14.5, "Sunlit glass doors"]]
-    : [[0, "Modern glass-front home"], [3.5, "Floor-to-ceiling windows"], [7, "Casement window"], [11, "Sliding patio doors"], [14.5, "Full-height glazing"], [18, "Wood-tone frames"]];
-  const sceneN = $("#sceneN");
-  const sceneT = $("#sceneT");
-  let sceneIdx = -1;
-  const updateScene = () => {
-    const t = video.currentTime + 0.5; // switch mid-crossfade
-    let i = 0;
-    SCENES.forEach(([s], k) => { if (t >= s) i = k; });
-    if (i === sceneIdx) return;
-    sceneIdx = i;
-    sceneT.classList.remove("is-in");
-    setTimeout(() => {
-      sceneN.textContent = String(i + 1).padStart(2, "0") + " / " + String(SCENES.length).padStart(2, "0");
-      sceneT.textContent = SCENES[i][1];
-      sceneT.classList.add("is-in");
-    }, 200);
+  let wantPlay = false;
+  const tryPlay = () => {
+    video.muted = true;               // must be muted for autoplay to be allowed
+    const pr = video.play();
+    if (pr && pr.catch) pr.catch(() => { /* blocked (e.g. iOS Low Power Mode): poster stays; retried on first touch */ });
   };
-
-  const startVideo = () => {
-    if (reduceMotion || saveData || !video) return;
+  if (!reduceMotion && !saveData && video) {
+    wantPlay = true;
     video.src = portrait && video.dataset.srcMobile ? video.dataset.srcMobile : video.dataset.src;
-    video.addEventListener("error", () => video.removeAttribute("src"), { once: true });
-    video.addEventListener("timeupdate", updateScene);
-    video.addEventListener("playing", () => { pauseBtn.hidden = false; hero.classList.add("is-playing"); }, { once: true });
-    const p = video.play();
-    if (p && p.catch) p.catch(() => { /* autoplay blocked: the poster image simply stays */ });
-  };
-  if (document.readyState === "complete") startVideo();
-  else window.addEventListener("load", startVideo, { once: true });
-
-  pauseBtn.addEventListener("click", () => {
-    const paused = video.paused;
-    paused ? video.play() : video.pause();
-    pauseBtn.dataset.paused = String(!paused);
-    pauseBtn.setAttribute("aria-label", paused ? "Pause background video" : "Play background video");
-  });
+    video.addEventListener("error", () => { wantPlay = false; video.removeAttribute("src"); }, { once: true });
+    tryPlay();
+    // Some browsers only allow playback after any user interaction — retry quietly then.
+    const retry = () => { if (wantPlay && video.paused && heroVisible) tryPlay(); };
+    ["pointerdown", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, retry, { passive: true }));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) retry(); });
+  }
   // Don't burn battery decoding a video nobody can see
+  let heroVisible = true;
   new IntersectionObserver(([en]) => {
-    if (!video.src || pauseBtn.dataset.paused === "true") return;
-    en.isIntersecting ? video.play().catch(() => {}) : video.pause();
+    heroVisible = en.isIntersecting;
+    if (!wantPlay) return;
+    heroVisible ? tryPlay() : video.pause();
   }).observe(hero);
 
   /* ------------------------------------------------------------- REVEAL */
@@ -139,8 +177,6 @@
     { threshold: 0.12 }
   );
   $$(".reveal").forEach((el) => revealObs.observe(el));
-  // Hero text is above the fold: reveal it right away instead of waiting on the observer.
-  setTimeout(() => $$(".hero .reveal").forEach((el) => el.classList.add("is-in")), 50);
 
   /* ------------------------------------------- OPENING-TYPE DIAGRAMS */
   // Simple catalog-style line drawings showing how each type opens.

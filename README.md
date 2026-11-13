@@ -57,18 +57,23 @@ Nothing else was made up. In `js/data.js`, anything that still needs checking is
 Every photo and video on the site is free-license stock, self-hosted in `assets/`. None of it is an ARTEM
 project. The page labels it "Illustrative" wherever it appears (hero, products, finishes, gallery, footer).
 
-- **Hero reel** (`assets/video/`): one edited, looping reel built from free Pexels clips
-  (IDs 39576524, 37634863, 5835694, 7578541, 39105099, 40807457). Phones get a separate vertical cut
-  that also uses 40074718, 34237018 and 40807351.
-  - `hero-desktop.mp4` is 1920×1080, about 22 s and 6.5 MB.
-  - `hero-mobile.mp4` is 720×1280, about 19 s and 2.8 MB.
-  - The scene captions in the hero ("Floor-to-ceiling windows", etc.) are timed to these cuts in `js/main.js → SCENES`.
+- **Hero reel** (`assets/video/`): a two-shot loop edited from free Pexels clips 39576524 (a glass-front house
+  among palms) and 37634863 (a living room with floor-to-ceiling black frames). The last crossfade lands on the
+  first frame, so it loops without a cut.
+  - `hero-desktop.mp4` is 1920×1080, about 12 s and 6.7 MB.
+  - `hero-mobile.mp4` is 720×1280, about 12 s and 2.8 MB, and is used on portrait screens.
+  - The video autoplays muted, loops and plays inline, with no visible controls.
+- **Hero logo flight** (same technique as the VaelorCoat site): there is only one visible logo, the navbar's.
+  At the top of the page it is drawn over the invisible `.hero__brand` placeholder in the hero's centre.
+  Scrolling through the first ~45% of the hero moves and shrinks it into the navbar. The code is in `js/main.js → LOGO FLIGHT`.
+- **Logo files** (`assets/logo/artem-logo-light.svg` and `artem-logo-dark.svg`): the ARTEM wordmark used on this
+  sample site. It's custom-made, not ARTEM's official logo file. The white version is for over the video and the
+  dark version for the light navbar. To change it later, replace both files and keep the names.
 - **Product, finish and gallery photos** (`assets/img/`): Unsplash photos plus stills taken from the Pexels clips.
   Each image comes in two sizes, `<name>-800.jpg` and `<name>-1600.jpg`.
 - **Design inspiration gallery:** 12 illustrative images, listed in `js/data.js → inspiration`.
 - **Verified ARTEM installations:** empty for now. Add real photos to `js/data.js → projects` and an
   "ARTEM installations" block appears above the inspiration gallery automatically.
-- **Logo:** a simple window-mark wordmark, not ARTEM's actual logo file.
 
 Pexels and Unsplash licenses allow free commercial use without attribution. Credit lines are kept anyway, for honesty.
 

@@ -1,0 +1,9 @@
+<!-- ARTEM wordmark used on this sample site (custom-made, not ARTEM's official logo file). Dark version for the light navbar. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="520" height="120">
+  <g fill="none" stroke="#1d3561">
+    <rect x="6" y="10" width="100" height="100" rx="3" stroke-width="7"/>
+    <path d="M56 10v100M6 60h100" stroke-width="4.5"/>
+  </g>
+  <text x="134" y="78" fill="#12161c" font-family="Manrope, 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="74" letter-spacing="15">ARTEM</text>
+  <text x="137" y="108" fill="#5e6672" font-family="Manrope, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="17.5" letter-spacing="5.6">UPVC WINDOWS &amp; DOORS</text>
+</svg>
