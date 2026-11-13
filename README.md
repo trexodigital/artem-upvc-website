@@ -57,11 +57,15 @@ Nothing else was made up. In `js/data.js`, anything that still needs checking is
 Every photo and video on the site is free-license stock, self-hosted in `assets/`. None of it is an ARTEM
 project. The page labels it "Illustrative" wherever it appears (hero, products, finishes, gallery, footer).
 
-- **Hero reel** (`assets/video/`): a two-shot loop edited from free Pexels clips 39576524 (a glass-front house
-  among palms) and 37634863 (a living room with floor-to-ceiling black frames). The last crossfade lands on the
-  first frame, so it loops without a cut.
-  - `hero-desktop.mp4` is 1920×1080, about 12 s and 6.7 MB.
-  - `hero-mobile.mp4` is 720×1280, about 12 s and 2.8 MB, and is used on portrait screens.
+- **Hero reel** (`assets/video/`): a four-shot loop edited from free Pexels clips:
+  - 39576524: a glass-front house among palms
+  - 37634863: a living room with floor-to-ceiling black frames
+  - 39576527: a staircase with glass railings (the phone cut uses 40397831)
+  - 7578551: a bathroom with a frameless glass shower enclosure
+
+  The last crossfade lands on the first frame, so it loops without a cut.
+  - `hero-desktop.mp4` is 1920×1080, about 21 s and 6.2 MB.
+  - `hero-mobile.mp4` is 720×1280, about 21 s and 3.2 MB, and is used on portrait screens.
   - The video autoplays muted, loops and plays inline, with no visible controls.
 - **Hero logo flight** (same technique as the VaelorCoat site): there is only one visible logo, the navbar's.
   At the top of the page it is drawn over the invisible `.hero__brand` placeholder in the hero's centre.
