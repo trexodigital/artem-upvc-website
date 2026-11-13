@@ -2,7 +2,7 @@
 <html lang="en" class="no-js">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>ARTEM uPVC Windows and Doors — Lubao, Pampanga</title>
   <meta name="description" content="uPVC sliding, casement, awning and fixed windows and doors in white, black and wood finish — plus shower enclosures, glass railings and more. Based in Lubao, Pampanga. Free quotation." />
   <meta name="theme-color" content="#12161c" />
@@ -26,10 +26,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Hero poster is the first thing painted: load the right one early -->
-  <link rel="preload" as="image" href="assets/video/hero-desktop-poster.jpg" media="(min-aspect-ratio: 4/5)" />
-  <link rel="preload" as="image" href="assets/video/hero-mobile-poster.jpg" media="(max-aspect-ratio: 4/5)" />
+  <link rel="preload" as="image" href="assets/video/hero-desktop-poster.jpg" />
 
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css?v=11" />
 
   <script type="application/ld+json">
   {
@@ -103,27 +102,29 @@
     <section class="hero" id="top" aria-label="Introduction">
       <div class="hero__media">
         <!--
-          ILLUSTRATIVE FOOTAGE — four-shot reel edited from free-license Pexels clips:
-          39576524 (glass-front house with palms), 37634863 (floor-to-ceiling black frames),
-          39576527 (staircase with glass railings; mobile cut uses 40397831) and
-          7578551 (bathroom with frameless glass shower enclosure).
-          NOT ARTEM projects. The reel's last crossfade lands on its first frame, so it loops seamlessly.
-          hero-desktop.mp4 = 1920×1080 (16:9), hero-mobile.mp4 = 720×1280 (9:16, picked by JS on portrait screens).
-          To use ARTEM footage, replace these files (keep the names).
+          ILLUSTRATIVE FOOTAGE (free-license Pexels clips 39576524, 37634863, 39576527, 7578551) — NOT ARTEM projects.
+          ONE film on every device:
+            · hero-desktop.mp4      1920×1080 — desktops/laptops (full-screen, as before)
+            · hero-desktop-720.mp4  1280×720  — the identical video, re-encoded lighter for phones/tablets
+          Both have the same 630 frames / 21.0 s, so they stay in step. H.264 High, +faststart, seamless loop.
         -->
-        <video class="hero__video" id="heroVideo" autoplay muted loop playsinline preload="metadata"
-          poster="assets/video/hero-desktop-poster.jpg"
-          data-src="assets/video/hero-desktop.mp4"
-          data-src-mobile="assets/video/hero-mobile.mp4"
-          data-poster-mobile="assets/video/hero-mobile-poster.jpg"
-          aria-hidden="true"></video>
+        <!-- The film. Landscape: fills the hero. Portrait: the complete 16:9 frame, uncropped, below the logo.
+             muted + playsinline + autoplay are all required for iOS autoplay. -->
+        <div class="hero__frame">
+          <video class="hero__video" id="heroVideo" autoplay muted loop playsinline webkit-playsinline
+            preload="metadata" disablepictureinpicture disableremoteplayback x-webkit-airplay="deny"
+            poster="assets/video/hero-desktop-poster.jpg"
+            data-src="assets/video/hero-desktop.mp4"
+            data-src-light="assets/video/hero-desktop-720.mp4"
+            aria-hidden="true"></video>
+        </div>
         <div class="hero__shade"></div>
       </div>
 
       <h1 class="sr-only">ARTEM uPVC Windows and Doors — Lubao, Pampanga</h1>
 
-      <!-- Layout placeholder for the logo's starting position. It stays invisible while the
-           navbar logo is drawn here; it is only shown itself if the flight is disabled (reduced motion). -->
+      <!-- Layout placeholder for the logo's starting position (centre of the hero on landscape screens,
+           the space above the video on portrait screens). The navbar logo is drawn here and flies to the bar. -->
       <div class="hero__center">
         <img class="hero__brand" id="heroBrand" src="assets/logo/artem-logo-light.svg" width="520" height="120" alt="" aria-hidden="true" decoding="async" />
       </div>
@@ -524,7 +525,7 @@
     <a href="#quote" class="action-bar__btn action-bar__btn--primary">Free Quote</a>
   </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/main.js" defer></script>
+  <script src="js/data.js?v=11"></script>
+  <script src="js/main.js?v=11" defer></script>
 </body>
 </html>

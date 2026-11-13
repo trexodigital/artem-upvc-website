@@ -33,12 +33,13 @@
      the hero; as the visitor scrolls through the first ~45% of the hero it
      travels up and shrinks into its navbar slot. Everything is a pure
      function of scrollY, so scrolling back reverses it exactly — no fades
-     between two logos, no jumps. Reduced motion: no flight; the hero logo
-     is simply shown in place and the navbar logo stays in the bar.        */
+     between two logos, no jumps. It runs with Reduce Motion on too: it is
+     driven directly by the visitor's own scrolling (no autonomous motion),
+     and disabling it would leave two logos on screen.                       */
   const brand = $("#brand");
   const heroBrand = $("#heroBrand");
   const flight = (function () {
-    if (!brand || !heroBrand || reduceMotion) { root.classList.add("flight-ready"); return { measure() {}, update() { return undefined; } }; }
+    if (!brand || !heroBrand) { root.classList.add("flight-ready"); return { measure() {}, update() { return undefined; } }; }
     root.classList.add("logo-flight");
     const clamp01 = (v) => Math.min(1, Math.max(0, v));
     const easeIO = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
@@ -136,39 +137,90 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") { setMenu(false); toggle.focus(); }
   });
-  window.matchMedia("(min-width: 961px)").addEventListener("change", (m) => m.matches && setMenu(false));
+  window.matchMedia("(min-width: 1025px)").addEventListener("change", (m) => m.matches && setMenu(false));
 
   /* --------------------------------------------------------- HERO VIDEO */
-  // Autoplays muted, loops, plays inline — no visible controls. Phones (portrait
-  // screens) get the vertical 9:16 cut. Skipped only for reduced-motion or
-  // data-saver users, who see the poster image instead.
+  // ONE film everywhere. Autoplays muted, loops, plays inline — no visible controls.
+  //  · Landscape screens: the film fills the hero (hero-desktop.mp4; a lighter identical
+  //    encode on screens ≤ 1024px wide).
+  //  · Portrait screens: the complete 16:9 frame is shown uncropped below the logo
+  //    (object-fit: contain, see CSS) on a plain dark background.
   const video = $("#heroVideo");
   const saveData = navigator.connection && navigator.connection.saveData;
-  const portrait = window.matchMedia("(max-aspect-ratio: 4/5)").matches;
-  if (portrait && video.dataset.posterMobile) video.poster = video.dataset.posterMobile;
+  const portraitMQ = window.matchMedia("(max-aspect-ratio: 1/1)");   // same rule as the CSS layout
+  const srcFor = () => (portraitMQ.matches || window.innerWidth <= 1024 ? video.dataset.srcLight : video.dataset.src);
+  let currentSrc = srcFor();
 
+  // Hero height = the real visible screen height. Set on load and when the width or
+  // orientation changes — NOT when the mobile browser bar collapses mid-scroll, which
+  // would otherwise make the hero (and the logo's start point) jump.
+  let lastW = window.innerWidth;
+  const setHeroHeight = () => root.style.setProperty("--hero-h", window.innerHeight + "px");
+  setHeroHeight();
+
+  // The main video stays invisible (opacity 0) until frames are actually playing, so the
+  // visitor only ever sees the poster still or moving footage — never a black box, a
+  // native play button or a frozen first frame.
   let wantPlay = false;
-  const tryPlay = () => {
-    video.muted = true;               // must be muted for autoplay to be allowed
-    const pr = video.play();
-    if (pr && pr.catch) pr.catch(() => { /* blocked (e.g. iOS Low Power Mode): poster stays; retried on first touch */ });
-  };
-  if (!reduceMotion && !saveData && video) {
-    wantPlay = true;
-    video.src = portrait && video.dataset.srcMobile ? video.dataset.srcMobile : video.dataset.src;
-    video.addEventListener("error", () => { wantPlay = false; video.removeAttribute("src"); }, { once: true });
-    tryPlay();
-    // Some browsers only allow playback after any user interaction — retry quietly then.
-    const retry = () => { if (wantPlay && video.paused && heroVisible) tryPlay(); };
-    ["pointerdown", "touchstart", "keydown"].forEach((ev) => window.addEventListener(ev, retry, { passive: true }));
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) retry(); });
-  }
-  // Don't burn battery decoding a video nobody can see
   let heroVisible = true;
+  const showVideo = () => hero.classList.add("video-on");
+  const giveUp = () => {
+    wantPlay = false;
+    hero.classList.remove("video-on");
+    video.removeAttribute("src"); video.load();
+  };
+  const playMuted = (v) => {
+    v.muted = true; v.defaultMuted = true; v.playsInline = true;   // iOS requires muted for autoplay
+    const pr = v.play();
+    if (pr && pr.catch) pr.catch(() => { /* refused (e.g. iOS Low Power Mode): stills stay; retried on next tap */ });
+  };
+
+  const tryPlay = () => { playMuted(video); };
+  if (!saveData && video) {
+    wantPlay = true;
+    video.preload = "auto";
+    video.src = currentSrc;
+    video.addEventListener("playing", showVideo);
+    video.addEventListener("error", giveUp, { once: true });
+    // If nothing has played after 12 s (very slow network / decode failure) keep the still.
+    setTimeout(() => { if (wantPlay && video.readyState < 2 && video.paused) giveUp(); }, 12000);
+    tryPlay();
+    // Browsers that refused autoplay usually allow it after a real tap/click — retry quietly then.
+    const retry = () => { if (wantPlay && video.paused && heroVisible) tryPlay(); };
+    ["touchend", "click", "keydown"].forEach((ev) => window.addEventListener(ev, retry, { passive: true }));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) retry(); });
+    window.addEventListener("pageshow", retry);   // returning via the back button (bfcache)
+  }
+
+  // Screen changed shape (rotation, split view, window resize): re-fit the hero height,
+  // re-place the logo and switch file if needed (continuing from the same moment).
+  let resizeTimer = 0;
+  const onScreenChange = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.innerWidth !== lastW) { lastW = window.innerWidth; setHeroHeight(); }
+      flight.measure(); onScroll();                  // logo start point follows the new layout
+      if (!wantPlay) return;
+      const next = srcFor();
+      if (next === currentSrc) return;
+      currentSrc = next;
+      const t = video.currentTime || 0;
+      hero.classList.remove("video-on");
+      video.src = currentSrc;
+      video.addEventListener("loadedmetadata", () => {
+        try { video.currentTime = video.duration ? t % video.duration : 0; } catch (_) { /* ignore */ }
+        if (heroVisible) tryPlay();
+      }, { once: true });
+    }, 180);
+  };
+  window.addEventListener("resize", onScreenChange);
+  window.addEventListener("orientationchange", () => { lastW = -1; onScreenChange(); });
+
+  // Don't burn battery decoding video nobody can see
   new IntersectionObserver(([en]) => {
     heroVisible = en.isIntersecting;
     if (!wantPlay) return;
-    heroVisible ? tryPlay() : video.pause();
+    if (heroVisible) { tryPlay(); } else { video.pause(); }
   }).observe(hero);
 
   /* ------------------------------------------------------------- REVEAL */
@@ -209,7 +261,7 @@
       <article class="product is-entering" style="animation-delay:${i * 60}ms">
         <button class="product__btn" data-id="${p.id}" aria-haspopup="dialog">
           <div class="product__img">
-            <img src="${imgUrl(p.img, 800)}" srcset="${srcset(p.img)}" sizes="(max-width:600px) 100vw, (max-width:960px) 50vw, 40vw"
+            <img src="${imgUrl(p.img, 800)}" srcset="${srcset(p.img)}" sizes="(max-width:600px) 100vw, (max-width:1024px) 50vw, 40vw"
               alt="${esc(p.name)} (illustrative photo)" loading="lazy" decoding="async" />
             <span class="product__more">View details</span>
           </div>
@@ -334,7 +386,7 @@
       .map(
         (g, i) => `<figure class="gal is-entering" style="animation-delay:${i * 50}ms">
           <button class="gal__btn" data-i="${i}" aria-label="View larger: ${esc(g.title)}">
-            <img src="${imgUrl(g.img, 800)}" srcset="${srcset(g.img)}" sizes="(max-width:600px) 100vw, (max-width:960px) 50vw, 33vw" alt="${esc(g.title)} (illustrative)" loading="lazy" decoding="async" />
+            <img src="${imgUrl(g.img, 800)}" srcset="${srcset(g.img)}" sizes="(max-width:600px) 100vw, (max-width:1024px) 50vw, 33vw" alt="${esc(g.title)} (illustrative)" loading="lazy" decoding="async" />
           </button>
           <figcaption>${esc(g.title)}</figcaption>
         </figure>`

@@ -57,16 +57,15 @@ Nothing else was made up. In `js/data.js`, anything that still needs checking is
 Every photo and video on the site is free-license stock, self-hosted in `assets/`. None of it is an ARTEM
 project. The page labels it "Illustrative" wherever it appears (hero, products, finishes, gallery, footer).
 
-- **Hero reel** (`assets/video/`): a four-shot loop edited from free Pexels clips:
-  - 39576524: a glass-front house among palms
-  - 37634863: a living room with floor-to-ceiling black frames
-  - 39576527: a staircase with glass railings (the phone cut uses 40397831)
-  - 7578551: a bathroom with a frameless glass shower enclosure
-
-  The last crossfade lands on the first frame, so it loops without a cut.
-  - `hero-desktop.mp4` is 1920×1080, about 21 s and 6.2 MB.
-  - `hero-mobile.mp4` is 720×1280, about 21 s and 3.2 MB, and is used on portrait screens.
-  - The video autoplays muted, loops and plays inline, with no visible controls.
+- **Hero film** (`assets/video/`): ONE four-scene film on every device (Pexels 39576524, 37634863, 39576527, 7578551):
+  a glass-front house, floor-to-ceiling windows, a glass-railing staircase, a glass shower.
+  - `hero-desktop.mp4` 1920×1080 (6.3 MB) is used on desktops and laptops, filling the hero as before.
+  - `hero-desktop-720.mp4` 1280×720 (3.1 MB) is the identical film, encoded lighter, for phones and tablets.
+  - **Portrait screens:** the complete 16:9 frame is shown uncropped (`object-fit: contain`) directly below
+    the logo on a plain dark background; the hero is only as tall as logo + film. **Landscape screens:** the
+    film fills the hero.
+  - Both files have the same 630 frames (21.0 s) and stay in step; they loop seamlessly and play muted,
+    inline and without controls.
 - **Hero logo flight** (same technique as the VaelorCoat site): there is only one visible logo, the navbar's.
   At the top of the page it is drawn over the invisible `.hero__brand` placeholder in the hero's centre.
   Scrolling through the first ~45% of the hero moves and shrinks it into the navbar. The code is in `js/main.js → LOGO FLIGHT`.
