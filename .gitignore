@@ -1,0 +1,6 @@
+# Local tooling / OS files — not part of the website
+.claude/
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
