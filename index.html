@@ -28,7 +28,7 @@
   <!-- Hero poster is the first thing painted: load the right one early -->
   <link rel="preload" as="image" href="assets/video/hero-desktop-poster.jpg" />
 
-  <link rel="stylesheet" href="css/styles.css?v=11" />
+  <link rel="stylesheet" href="css/styles.css?v=24" />
 
   <script type="application/ld+json">
   {
@@ -162,8 +162,31 @@
           <div class="tabs" role="tablist" aria-label="Product categories" id="productTabs"></div>
         </div>
 
-        <div class="product-grid" id="productGrid" role="tabpanel" aria-live="polite"></div>
-        <p class="swipe-hint" aria-hidden="true">Swipe to see more →</p>
+        <!-- Endless 3D ring carousel (built by js/main.js): the cards stand in a full circle seen
+             slightly from above. Swipe / drag it, scroll the page past it, use the arrows or ← → keys. -->
+        <div class="pcar" id="productCarousel" role="tabpanel" aria-roledescription="carousel" aria-label="Products">
+          <div class="pcar__stage" id="productStage">
+            <div class="pcar__ring" id="productGrid"></div>
+          </div>
+          <div class="pcar__info">
+            <div class="pcar__text">
+              <p class="pcar__count" aria-hidden="true"><b id="pcarNow">01</b> / <span id="pcarAll">05</span></p>
+              <h3 class="pcar__name" id="pcarName">&nbsp;</h3>
+              <p class="pcar__tag" id="pcarTag">&nbsp;</p>
+            </div>
+            <div class="pcar__actions">
+              <button class="pcar__btn" type="button" id="pcarPrev" aria-label="Previous product">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+              </button>
+              <button class="btn btn--primary pcar__more" type="button" id="pcarMore" aria-haspopup="dialog">View details</button>
+              <button class="pcar__btn" type="button" id="pcarNext" aria-label="Next product">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          </div>
+          <p class="sr-only" aria-live="polite" id="pcarStatus"></p>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">Swipe or drag to spin</p>
         <p class="note"><span class="tag-illus">Illustrative</span> Photos show each window and door type in real homes. They are stock images, not ARTEM installations.</p>
       </div>
     </section>
@@ -525,7 +548,7 @@
     <a href="#quote" class="action-bar__btn action-bar__btn--primary">Free Quote</a>
   </div>
 
-  <script src="js/data.js?v=11"></script>
-  <script src="js/main.js?v=11" defer></script>
+  <script src="js/data.js?v=24"></script>
+  <script src="js/main.js?v=24" defer></script>
 </body>
 </html>

@@ -35,7 +35,7 @@ preview within a minute or two. Everything uses relative paths, so it works unde
 | `index.html` | Page structure and text |
 | `css/styles.css` | All styling. Colors and fonts are set once at the top (`:root`) |
 | `js/data.js` | **Edit this one.** Contact details, product list, photos, FAQ, project gallery |
-| `js/main.js` | Interactions: menu, video, product tabs and popup, finish picker, quote form |
+| `js/main.js` | Interactions: menu, video, product tabs, 3D product ring (swipe / drag / arrows) and popup, finish picker, quote form |
 | `assets/` | Favicon, hero video (`video/`) and images (`img/`) |
 
 ## Where the information came from

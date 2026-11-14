@@ -252,33 +252,319 @@
     .map((c, i) => `<button class="tab" role="tab" id="tab-${c.id}" data-cat="${c.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${esc(c.label)}</button>`)
     .join("");
 
-  const renderProducts = (cat) => {
-    const list = D.products.filter((p) => p.cat === cat);
-    grid.setAttribute("aria-labelledby", "tab-" + cat);
-    grid.innerHTML = list
-      .map(
-        (p, i) => `
-      <article class="product is-entering" style="animation-delay:${i * 60}ms">
-        <button class="product__btn" data-id="${p.id}" aria-haspopup="dialog">
+  /* Endless 3D ring carousel ---------------------------------------------------
+     The cards stand in a full circle (a cylinder), tilted so it is seen slightly from
+     above: the front row is big and sharp, the back row smaller behind it. Only the
+     ring's own transform changes while it spins, so it stays smooth on phones.
+     `pos` = rotation in cards (1 = one card). Ways to turn it:
+       · swipe / drag (follows the finger 1:1, then glides with the release speed)
+       · scrolling the page past it (mouse / trackpad only — on phones, swipe)
+       · horizontal trackpad / Shift + wheel, ← → keys, arrow buttons, click a card.
+     When it comes to rest, the nearest card sits at the front; its name, short
+     description and "View details" are shown under the ring. */
+  const carousel = (() => {
+    const wrap = $("#productCarousel");
+    const stage = $("#productStage");
+    const ring = grid;
+    const nowEl = $("#pcarNow"), allEl = $("#pcarAll"), statusEl = $("#pcarStatus");
+    const nameEl = $("#pcarName"), tagEl = $("#pcarTag"), textEl = $(".pcar__text", wrap);
+    const MIN_SLIDES = 12;                   // a full ring needs at least this many cards
+    const TILT = 0;                          // degrees: 0 = ring seen straight on (eye level)
+    const SETTLE = 0.42;                     // spring settle time (s)
+    const SCROLL_PX = 150;                   // page scroll (px) that turns the ring by one card
+    let real = [], slides = [], N = 0, theta = 30;
+    let pos = 0, target = 0, vel = 0, raf = 0, last = 0;
+    let R = 400, spacing = 220, P = 1200, stageW = 400;
+    let drag = null, moved = false, front = -1, activeK = -1;
+    const pad = (n) => String(n).padStart(2, "0");
+    const mod = (a, n) => ((a % n) + n) % n;
+
+    // Scroll link: how far the section is from the middle of the screen, in cards
+    let scrollOff = 0;
+    const scrollLinked = !reduceMotion && !window.matchMedia("(pointer: coarse)").matches;
+    const readScroll = () => {
+      if (!scrollLinked) return 0;
+      const r = stage.getBoundingClientRect();
+      return (window.innerHeight / 2 - (r.top + r.height / 2)) / SCROLL_PX;
+    };
+    const shown = () => pos + scrollOff;               // the rotation actually on screen
+
+    const cardHtml = (p, i) => `
+      <article class="product" role="group" aria-roledescription="slide">
+        <button class="product__btn" type="button" data-id="${p.id}" data-i="${i}" aria-haspopup="dialog" tabindex="-1"
+          aria-label="${esc(p.name)} — view details">
           <div class="product__img">
-            <img src="${imgUrl(p.img, 800)}" srcset="${srcset(p.img)}" sizes="(max-width:600px) 100vw, (max-width:1024px) 50vw, 40vw"
-              alt="${esc(p.name)} (illustrative photo)" loading="lazy" decoding="async" />
-            <span class="product__more">View details</span>
+            <img src="${imgUrl(p.img, 800)}" srcset="${srcset(p.img)}" sizes="(max-width:600px) 40vw, 260px"
+              alt="" loading="lazy" decoding="async" draggable="false" />
           </div>
-          <div class="product__meta">
-            <h3 class="product__name">${esc(p.name)}</h3>
-            ${p.op ? `<span class="op-icon" title="${esc(OPS[p.op][0])}">${opSvg(p.op)}</span>` : `<span class="product__idx">${String(i + 1).padStart(2, "0")}</span>`}
-          </div>
-          <p class="product__tag">${esc(p.tagline)}</p>
         </button>
-      </article>`
-      )
-      .join("");
-    $$("img", grid).forEach((img) => {
-      if (img.complete) img.classList.add("is-loaded");
-      else img.addEventListener("load", () => img.classList.add("is-loaded"), { once: true });
-      img.addEventListener("error", () => img.classList.add("is-loaded"), { once: true });
+      </article>`;
+
+    const measure = () => {
+      if (!N) return;
+      const w = slides[0].offsetWidth, h = w * 1.25;
+      spacing = w * 1.1;
+      theta = 360 / N;
+      R = spacing / (2 * Math.tan(Math.PI / N));
+      P = Math.max(900, R * 2.8);                       // camera distance
+      stageW = stage.clientWidth;
+      const t = (TILT * Math.PI) / 180;
+      const sBack = P / (P + 2 * R);
+      const above = Math.max(R * Math.sin(t) * sBack + (h / 2) * sBack, h / 2 - R * Math.sin(t));   // back row or front row, whichever reaches higher
+      const below = R * Math.sin(t) + h / 2;
+      const top = 24, bottom = 46;
+      ring.style.perspective = P.toFixed(0) + "px";
+      stage.style.setProperty("--cy", (top + above).toFixed(0) + "px");
+      stage.style.setProperty("--stage-h", (top + above + below + bottom).toFixed(0) + "px");
+      stage.style.setProperty("--floor-w", (2 * R + w).toFixed(0) + "px");
+      slides.forEach((el) => { el._t = el._o = el._z = el._back = undefined; });
+      scrollOff = readScroll();
+      render();
+    };
+
+    const render = () => {
+      const p = shown();
+      // iPhone-friendly 3D: there is NO shared 3D scene (no preserve-3d) for Safari to depth-sort
+      // every frame. Each card gets its own simple transform; stacking order (z-index) is only
+      // touched when two cards actually swap places; shading flips only when a card crosses to
+      // the back half. Per frame = one composited transform (+ opacity at the edges) per card.
+      stage._pos = p;                                   // read by the test scripts only
+      const half = stageW / 2, order = [];
+      for (let k = 0; k < N; k++) {
+        const el = slides[k];
+        const a = (mod(k - p + N / 2, N) - N / 2) * theta;            // degrees from the front
+        const rad = (a * Math.PI) / 180, c = Math.cos(rad);
+        const x = R * Math.sin(rad), z = R * (c - 1);                  // front card at z = 0
+        const back = c < 0;
+        const rot = back ? a + 180 : a;                                // back row shows the ring's inner side
+        const tf = `translate3d(${x.toFixed(1)}px,0,${z.toFixed(1)}px) rotateY(${rot.toFixed(2)}deg)`;
+        if (el._t !== tf) { el.style.transform = tf; el._t = tf; }
+        const sx = Math.abs(x) * (P / (P - z));                        // on-screen distance from centre
+        const o = Math.round(Math.max(0, Math.min(1, (half - sx) / (half * 0.2))) * 20) / 20;   // soft edge fade
+        if (el._o !== o) { el.style.opacity = o; el._o = o; }
+        if (el._back !== back) { el.classList.toggle("is-back", back); el._back = back; }
+        order.push([z, k]);
+      }
+      order.sort((m, n) => m[0] - n[0]);
+      for (let i = 0; i < N; i++) { const el = slides[order[i][1]]; if (el._z !== i) { el.style.zIndex = i; el._z = i; } }
+      const f = mod(Math.round(p), N);
+      if (f !== front) {
+        front = f;
+        const i = f % real.length;
+        nowEl.textContent = pad(i + 1);
+        nameEl.textContent = real[i].name;
+        tagEl.textContent = real[i].tagline;
+      }
+    };
+
+    // Only the front card is reachable with Tab / exposed to screen readers.
+    const applyActive = (announce) => {
+      const k = mod(Math.round(target + scrollOff), N);
+      if (k === activeK && !announce) return;
+      slides.forEach((el, j) => {
+        el.setAttribute("aria-hidden", j === k ? "false" : "true");
+        $(".product__btn", el).tabIndex = j === k ? 0 : -1;
+      });
+      const i = k % real.length;
+      slides[k].setAttribute("aria-label", `${i + 1} of ${real.length}`);
+      if (announce && k !== activeK) statusEl.textContent = `${real[i].name}, ${i + 1} of ${real.length}`;
+      activeK = k;
+    };
+
+    const tick = (t) => {
+      const dt = (last ? Math.min(64, t - last) : 16.7) / 1000;
+      last = t;
+      if (drag) {
+        // Touch events arrive ~60×/s but iPhones draw up to 120×/s: glide toward the finger
+        // every frame (≈30 ms lag, imperceptible) instead of jumping on each touch event.
+        const prev = pos;
+        // predict where the finger is *now* (between touch events) from its current speed,
+        // so every frame takes an even step instead of pulsing after each touch event
+        const ahead = drag.lt ? Math.min(0.034, Math.max(0, (t - drag.lt) / 1000)) : 0;
+        const aim = target + (drag.v || 0) * ahead;
+        pos += (aim - pos) * (reduceMotion ? 1 : 1 - Math.exp(-dt / 0.022));
+        vel = dt ? (pos - prev) / dt : 0;
+      } else {
+        if (reduceMotion) { pos = target; vel = 0; }
+        else {                                            // critically damped spring: smooth, no bounce
+          const w = 2 / SETTLE, x = w * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+          const ch = pos - target, tmp = (vel + w * ch) * dt;
+          vel = (vel - w * tmp) * e;
+          pos = target + (ch + tmp) * e;
+          if (Math.abs(target - pos) < 0.0004 && Math.abs(vel) < 0.01) { pos = target; vel = 0; }
+        }
+      }
+      render();
+      if (drag || pos !== target) raf = requestAnimationFrame(tick);
+      else { raf = 0; last = 0; }
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+    const snapTarget = (extra) => Math.round(target + scrollOff + (extra || 0)) - scrollOff;
+
+    const go = (n, focus) => {
+      target = snapTarget() + n;
+      applyActive(true); kick();
+      if (focus) $(".product__btn", slides[mod(Math.round(target + scrollOff), N)]).focus({ preventScroll: true });
+    };
+
+    /* swipe / drag ------------------------------------------------------------
+       Fingers use the phone's native touch events (most reliable on iPhone Safari);
+       mouse and pen use pointer events. Both feed the same three steps. */
+    const dragStart = (x, y) => {
+      drag = { x, y, p: pos, on: false, hist: [] };
+      moved = false;
+    };
+    // returns true while the ring is being dragged sideways (caller then blocks page scroll)
+    const dragMove = (x, y, t) => {
+      if (!drag) return false;
+      const dx = x - drag.x, dy = y - drag.y;
+      if (!drag.on) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return false;
+        if (Math.abs(dy) > Math.abs(dx)) { drag = null; return false; }   // mostly vertical: let the page scroll
+        drag.on = true; moved = true;
+        drag.x = x; drag.p = target = pos;
+        stage.classList.add("is-dragging");
+      }
+      const nt = drag.p - (x - drag.x) / spacing;        // the ring follows on every frame (see tick)
+      if (drag.lt && t > drag.lt) drag.v = 0.6 * ((nt - target) / ((t - drag.lt) / 1000)) + 0.4 * (drag.v || 0);
+      target = nt; drag.lt = t;
+      drag.hist.push([t, target]);
+      while (drag.hist.length > 2 && t - drag.hist[0][0] > 90) drag.hist.shift();
+      kick();
+      return true;
+    };
+    const dragEnd = (t) => {
+      const d = drag;
+      drag = null;
+      stage.classList.remove("is-dragging");
+      if (!d || !d.on) return;
+      setTimeout(() => { moved = false; }, 0);           // the click (if any) fires before this
+      const h = d.hist, a = h[0], b = h[h.length - 1];
+      vel = a && b && b[0] > a[0] && t - b[0] < 80 ? ((b[1] - a[1]) / (b[0] - a[0])) * 1000 : 0;
+      vel = Math.max(-16, Math.min(16, vel));
+      target = Math.round(target + scrollOff + Math.max(-5, Math.min(5, vel * 0.26))) - scrollOff;
+      applyActive(true); kick();
+    };
+
+    // touch (phones / tablets)
+    let touchId = null;
+    stage.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) { if (drag) dragEnd(performance.now()); touchId = null; return; }
+      const tch = e.changedTouches[0];
+      touchId = tch.identifier;
+      dragStart(tch.clientX, tch.clientY);
+    }, { passive: true });
+    stage.addEventListener("touchmove", (e) => {
+      if (touchId === null) return;
+      const tch = [...e.changedTouches].find((x) => x.identifier === touchId);
+      if (!tch) return;
+      if (dragMove(tch.clientX, tch.clientY, performance.now()) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const touchEnd = (e) => {
+      if (touchId === null || ![...e.changedTouches].some((x) => x.identifier === touchId)) return;
+      touchId = null;
+      dragEnd(performance.now());
+    };
+    stage.addEventListener("touchend", touchEnd);
+    stage.addEventListener("touchcancel", touchEnd);
+
+    // mouse / pen
+    let mouseId = null;
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || (e.pointerType === "mouse" && e.button !== 0)) return;
+      mouseId = e.pointerId;
+      dragStart(e.clientX, e.clientY);
     });
+    window.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== mouseId) return;
+      if (dragMove(e.clientX, e.clientY, e.timeStamp)) e.preventDefault();
+    });
+    const mouseEnd = (e) => {
+      if (e.pointerId !== mouseId) return;
+      mouseId = null;
+      dragEnd(e.timeStamp);
+    };
+    window.addEventListener("pointerup", mouseEnd);
+    window.addEventListener("pointercancel", mouseEnd);
+    stage.addEventListener("dragstart", (e) => e.preventDefault());   // never start a native image/link drag
+    stage.addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+
+    /* page scroll turns the ring; it eases onto the nearest card once scrolling stops */
+    let scrollT = 0;
+    if (scrollLinked) window.addEventListener("scroll", () => {
+      const r = stage.getBoundingClientRect();
+      if (r.bottom < -200 || r.top > window.innerHeight + 200) return;
+      scrollOff = readScroll();
+      kick();                                            // draw on the next animation frame
+      clearTimeout(scrollT);
+      scrollT = setTimeout(() => { if (!drag) { target = snapTarget(); applyActive(true); kick(); } }, 160);
+    }, { passive: true });
+
+    /* horizontal trackpad / Shift + wheel */
+    let wheelT = 0;
+    stage.addEventListener("wheel", (e) => {
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+      if (!dx || drag) return;
+      e.preventDefault();
+      const px = e.deltaMode === 1 ? dx * 32 : e.deltaMode === 2 ? dx * 600 : dx;
+      target += Math.max(-1, Math.min(1, px / spacing));
+      kick();
+      clearTimeout(wheelT);
+      wheelT = setTimeout(() => { target = snapTarget(); applyActive(true); kick(); }, 140);
+    }, { passive: false });
+
+    /* keys + buttons */
+    wrap.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      go(e.key === "ArrowRight" ? 1 : -1, ring.contains(document.activeElement));
+    });
+    $("#pcarPrev").addEventListener("click", () => go(-1));
+    $("#pcarNext").addEventListener("click", () => go(1));
+    $("#pcarMore").addEventListener("click", (e) => {
+      const k = mod(Math.round(shown()), N);
+      openSheet($(".product__btn", slides[k]).dataset.id, e.currentTarget);
+    });
+
+    let resizeT = 0;
+    window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(measure, 120); });
+
+    return {
+      set(list) {
+        real = list;
+        const copies = Math.max(1, Math.ceil(MIN_SLIDES / list.length));
+        const all = [];
+        for (let c = 0; c < copies; c++) list.forEach((p, i) => all.push(cardHtml(p, i)));
+        ring.innerHTML = all.join("");
+        slides = $$(".product", ring);
+        N = slides.length;
+        $$("img", ring).forEach((img) => {
+          if (img.complete) img.classList.add("is-loaded");
+          else img.addEventListener("load", () => img.classList.add("is-loaded"), { once: true });
+          img.addEventListener("error", () => img.classList.add("is-loaded"), { once: true });
+        });
+        allEl.textContent = pad(list.length);
+        front = -1; activeK = -1; vel = 0;
+        scrollOff = readScroll();
+        pos = target = Math.round(scrollOff) - scrollOff;  // start with a card exactly at the front
+        wrap.classList.remove("is-entering"); void wrap.offsetWidth; wrap.classList.add("is-entering");
+        measure();
+        applyActive(false);
+      },
+      // Clicking a card that isn't at the front turns it to the front; the front one opens.
+      bringToFront(btn) {
+        const k = slides.indexOf(btn.closest(".product"));
+        const d = Math.round(mod(k - shown() + N / 2, N) - N / 2);
+        if (!d) return false;
+        go(d);
+        return true;
+      },
+    };
+  })();
+
+  const renderProducts = (cat) => {
+    $("#productCarousel").setAttribute("aria-labelledby", "tab-" + cat);
+    carousel.set(D.products.filter((p) => p.cat === cat));
   };
 
   const selectTab = (btn, focus) => {
@@ -320,7 +606,7 @@
     $("#sheetMsg").href = D.contact.messenger;
     sheet.showModal();
   };
-  grid.addEventListener("click", (e) => { const b = e.target.closest(".product__btn"); if (b) openSheet(b.dataset.id, b); });
+  grid.addEventListener("click", (e) => { const b = e.target.closest(".product__btn"); if (b && !carousel.bringToFront(b)) openSheet(b.dataset.id, b); });
   sheet.addEventListener("click", (e) => {
     if (e.target === sheet || e.target.closest("[data-close]")) sheet.close();
   });
